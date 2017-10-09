@@ -1,123 +1,149 @@
 /**
- *  Atlantis Development - Door Controller
  *
- *  Copyright 2017 Atlantis Development
- *	Don Yonce
  */
- 
-import groovy.json.JsonSlurper
 
+// Preferences
 preferences {
-        input("ip", "string", title:"IP Address", description: "192.168.1.150", required: true, displayDuringSetup: true)
-        input("port", "string", title:"Port", description: "80", defaultValue: 80 , required: true, displayDuringSetup: true)
+    input "ip", "text", title: "Arduino IP Address", description: "ip", required: true, displayDuringSetup: true
+    input "port", "text", title: "Arduino Port", description: "port", required: true, displayDuringSetup: true
 }
-
+    
 metadata {
 	definition (name: "Door Controller", namespace: "dcyonce", author: "Don Yonce") {
-		capability "Polling"
-		capability "Refresh"
-        capability "Switch"
-        capability "Sensor"
-        capability "Actuator"
-        capability "Door Control"
-        
-        attribute "systemName", "string"
-        
-		command "lock"
-		command "unlock"
+		capability "Actuator"
+		capability "Switch"
+		capability "Sensor"
 	}
 
+	// Simulator metadata
 	simulator {
-		// TODO: define status and reply messages here
+
 	}
+    
 
+	// UI tile definitions
 	tiles {
-		valueTile("systemName", "device.systemName", width: 2, height: 1) {
-            state "systemName", label:'${currentValue}'
-        }
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat") {
-        	state "default", action:"refresh.refresh", icon: "st.secondary.refresh"
-        }
-        main "button"
-        details(["button", "systemName"])
-    }
-}
+		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true) {
+			state "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
+			state "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+		}
+		standardTile("configure", "device.configure", inactiveLabel: false, decoration: "flat") {
+			state "configure", label:'', action:"configuration.configure", icon:"st.secondary.configure"
+		}
 
-// ------------------------------------------------------------------
+		main (["switch"])
+		details (["switch","configure"])
+	}
+}
 
 // parse events into attributes
 def parse(String description) {
-    log.debug "description: ${description}"
-    def map = [:]
-    def descMap = parseDescriptionAsMap(description)
-    def body = new String(descMap["body"].decodeBase64())
-    def slurper = new JsonSlurper()
-    def result = slurper.parseText(body)
-    log.debug "result: ${result}"
-	if (result){
-    	log.debug "Controller is up"
-   		sendEvent(name: "systemName", value: results.Computer.MachineName)
+	log.debug "Parsing '${description}'"
+	def msg = parseLanMessage(description)
+	def headerString = msg.header
+    
+    def json = msg.xml
+    def xml = msg.xml
+
+	log.debug "JSON= ${json}"
+	log.debug "XML= ${xml}"
+
+	if (!headerString) {
+		log.debug "headerstring was null for some reason :("
     }
-    else
-	{
-   		sendEvent(name: "systemName", value: "unknown")
-    }  
-}
 
-// handle commands
-def poll() {
-	log.debug "Executing 'poll'"
-    getStatus()
-}
+	def bodyString = msg.body
 
-def refresh() {
-	log.debug "Executing 'refresh'"
-    getStatus()
-}
-
-private getStatus() {
-	def uri = "/WebServer/Stats?Format=JSON"
-    getAction(uri)
-}
-
-// ------------------------------------------------------------------
-
-private getAction(uri){
-  //setDeviceNetworkId(ip,port)  
-   
-  //uri += "?Format=JSON"
-  def hubAction = new physicalgraph.device.HubAction(
-    method: "GET",
-    path: uri
- )
-  log.debug("Executing hubAction on " + getHostAddress())
-  log.debug hubAction
-  hubAction    
-}
-
-
-// ------------------------------------------------------------------
-// Helper methods
-// ------------------------------------------------------------------
-
-def parseDescriptionAsMap(description) {
-	description.split(",").inject([:]) { map, param ->
-		def nameAndValue = param.split(":")
-		map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
+	if (bodyString) {
+        log.debug "BodyString: $bodyString"
+        def value = bodyString
+	    def name = value in ["on","off"] ? "switch" : null
+	    def result = createEvent(name: name, value: value)
+	    log.debug "Parse returned ${result?.descriptionText}"
+	    return result
 	}
 }
 
-private getHeader(userpass){
-	log.debug "Getting headers"
-    def headers = [:]
-    headers.put("HOST", getHostAddress())
-    headers.put("Authorization", userpass)
-    //log.debug "Headers are ${headers}"
-    return headers
+private getHostAddress() {
+    def ip = settings.ip
+    def port = settings.port
+
+	log.debug "Using ip: ${ip} and port: ${port} for device: ${device.id}"
+    return ip + ":" + port
 }
 
-private delayAction(long time) {
-	new physicalgraph.device.HubAction("delay $time")
+def sendEthernet(message) {
+	def result
+	log.debug "Executing 'sendEthernet' ${message}"
+	//new physicalgraph.device.HubAction(
+    //	method: "POST",
+    //	path: "/${message}?",
+    //	headers: [ HOST: "${getHostAddress()}" ]
+	//)
+	result = sendHubCommand(
+    	new physicalgraph.device.HubAction(
+        	"""GET ${uri} HTTP/1.1\r\nHOST: ${settings.ip}:${settings.port}\r\n\r\n""",
+            physicalgraph.device.Protocol.LAN,
+            "${deviceNetworkId}")
+            )    
+    log.debug "result: ${result}"
+}
+
+def getAction(url) 
+{
+  setDeviceNetworkId(settings.ip,settings.port)  
+  //uri += "?Format=JSON"
+  def hubAction = new physicalgraph.device.HubAction(
+    method: "GET",
+    path: url
+ )
+ //,delayAction(1000), refresh()]
+  log.debug("Executing hubAction on " + getHostAddress())
+  log.debug hubAction
+  hubAction 
+}
+
+def unlock()
+{
+	def result
+	log.debug "Executing 'UnLock Door #1'"
+	// result = new physicalgraph.device.HubAction(
+    //	method: "GET",
+    //	path: "/api.asmx/Doors/1/UnLock",
+    //    headers: [ HOST: "${getHostAddress()}", Data: "1234" ]
+    //)
+    //return result
+    getAction("/api.asmx/Doors/1/UnLock?Format=JSON")
+}
+def lock()
+{
+	def result
+	log.debug "Executing 'Lock Door #1'"
+	result = new physicalgraph.device.HubAction(
+    	method: "GET",
+    	path: "/api.asmx/Doors/1/Lock",
+		headers: [ HOST: "${getHostAddress()}", Data: "1234" ]    
+    )
+	return result
+}
+
+
+
+// Commands sent to the device
+def on() {
+	lock()
+}
+
+def off() {
+	unlock()
+}
+
+def configure() {
+	log.debug "Executing 'configure'"
+    if(device.deviceNetworkId!=settings.mac) {
+    	log.debug "setting device network id"
+    	device.deviceNetworkId = settings.mac
+    }
 }
 
 private setDeviceNetworkId(ip,port){
@@ -125,10 +151,6 @@ private setDeviceNetworkId(ip,port){
   	def porthex = convertPortToHex(port)
   	device.deviceNetworkId = "$iphex:$porthex"
   	log.debug "Device Network Id set to ${iphex}:${porthex}"
-}
-
-private getHostAddress() {
-	return "${ip}:${port}"
 }
 
 private String convertIPtoHex(ipAddress) { 

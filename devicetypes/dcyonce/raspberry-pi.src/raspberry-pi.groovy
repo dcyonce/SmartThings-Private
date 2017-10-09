@@ -43,6 +43,7 @@ metadata {
         command "restart"
 		command "zoneOn"
 		command "stop"
+		command "unlock"        
 	}
 
 	simulator {
@@ -174,6 +175,12 @@ def refresh() {
     getRPiData()
 }
 
+def unlock()
+{
+    def uri = "/api.asmx/Doors/1/unlock?Format=JSON"
+    getAction(uri)
+}
+
 def zoneOn()
 {
     def uri = "/api/Zone/B2/start?Format=JSON"
@@ -207,7 +214,8 @@ private getAction(uri){
   //uri += "?Format=JSON"
   def hubAction = new physicalgraph.device.HubAction(
     method: "GET",
-    path: uri
+    path: uri,
+	headers: [HOST: "10.10.0.103:80"]    
  )
  //,delayAction(1000), refresh()]
   log.debug("Executing hubAction on " + getHostAddress())
