@@ -9,6 +9,7 @@
  *
  *  https://graph.api.smartthings.com/api/smartapps/installations/32aa705e-fd19-4176-836a-db1a319194db/probes
  *  https://graph.api.smartthings.com/api/smartapps/installations/32aa705e-fd19-4176-836a-db1a319194db/family
+ *  https://graph.api.smartthings.com/api/smartapps/installations/32aa705e-fd19-4176-836a-db1a319194db/sensors
  */
 definition(
     name: "REST API",

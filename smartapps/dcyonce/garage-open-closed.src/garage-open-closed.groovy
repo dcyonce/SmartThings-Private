@@ -107,4 +107,3 @@ def SendOpenedTooLong()
         runIn(resendTime * 60, SendOpenedTooLong)         
 	}
 }
-
