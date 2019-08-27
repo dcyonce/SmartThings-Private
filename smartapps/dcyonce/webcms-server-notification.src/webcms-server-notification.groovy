@@ -21,6 +21,7 @@ preferences {
 	}
 	section("Select Devices") {
         input "AllDevices", "capability.refresh", title: "Select Devices", required: false, multiple: true
+        input "PresenceSensors", "capability.presenceSensor", title: "Select people", required: false, multiple: true
         // input "TemperatureSensors", "capability.temperatureMeasurement", title: "Select temperature sensors", required: false, multiple: true
 	    // input "ContactSensors", "capability.contactSensor", title: "Select contact sensors", required: false, multiple: true
         // input "Switches", "capability.switch", title: "Select switches", required: false, multiple: true
@@ -43,8 +44,9 @@ def updated() {
 }
 
 def initialize() {
+	// working
 	subscribe(AllDevices, "temperature", ChangeHandler)
-	subscribe(AllDevices, "presence", ChangeHandler)
+	subscribe(PresenceSensors, "presence", ChangeHandler)
 	subscribe(AllDevices, "contact", ChangeHandler)
 	subscribe(AllDevices, "switch", ChangeHandler)
 	subscribe(AllDevices, "motion", ChangeHandler)
@@ -52,12 +54,15 @@ def initialize() {
 	subscribe(AllDevices, "lock", ChangeHandler)
 	subscribe(AllDevices, "lastActivity", ChangeHandler)
 	subscribe(AllDevices, "power", ChangeHandler)
-	subscribe(AllDevices, "level", ChangeHandler)
-	subscribe(AllDevices, "rssi", ChangeHandler)
-	subscribe(AllDevices, "smoke", ChangeHandler)
-	subscribe(AllDevices, "water", ChangeHandler)
 	subscribe(AllDevices, "humidity", ChangeHandler)
 	subscribe(AllDevices, "battery", ChangeHandler)
+
+	// may not work
+	subscribe(AllDevices, "rssi", ChangeHandler)
+	subscribe(AllDevices, "water", ChangeHandler)
+	subscribe(AllDevices, "level", ChangeHandler)
+	subscribe(AllDevices, "smoke", ChangeHandler)
+	
 }
 
 def ChangeHandler(evt) {
@@ -79,7 +84,7 @@ private UpdateServer(evt) {
             Manufacturer: "${evt.device.manufacturerName}", 
             Model: "${evt.device.modelName}", 
             Location: "${location.name}",
-            Setting: "${evt.name}", 
+            Capability: "${evt.name}", 
             Value: "${evt.value}"
             ]
     	)
